@@ -20,7 +20,7 @@ struct PackageTile: View {
   let action: MainAction
   /// Where an exported package can go; empty until there is one.
   let routes: [ExportRoute]
-  private var isSplit: Bool { action == .export && !routes.isEmpty }
+  @State private var isSplit = false
   let perform: () -> Void
   @ScaledMetric private var side: CGFloat
   @State private var travel: CGFloat = 0
@@ -55,6 +55,17 @@ struct PackageTile: View {
     }
     .frame(width: max(side, isSplit ? rowWidth : side), height: side)
     .animation(.easeInOut(duration: 0.3), value: action)
+    .task(id: action) {
+      isSplit = false
+      guard action == .export else { return }
+      // Render the stacked tiles before automatically playing the original split.
+      do { try await Task.sleep(nanoseconds: 150_000_000) }
+      catch { return }
+      guard !Task.isCancelled else { return }
+      withAnimation(.spring(response: 0.55, dampingFraction: 0.68)) {
+        isSplit = true
+      }
+    }
   }
 
   // MARK: One tile
@@ -87,21 +98,46 @@ struct PackageTile: View {
 
   // MARK: Divided tiles
 
-  /// Successful conversions expose each destination as a separate button.
+  /// Each daughter tile starts as the whole tile, stacked under the first,
+  /// then shrinks and moves to its place in the row.
   private func cell(_ index: Int, _ route: ExportRoute) -> some View {
     let count = CGFloat(routes.count)
-    let offset = (CGFloat(index) - (count - 1) / 2) * (cellSide + gap)
-    let shape = RoundedRectangle(cornerRadius: cellSide * 0.22, style: .continuous)
+    let size = isSplit ? cellSide : side
+    let offset = isSplit ? (CGFloat(index) - (count - 1) / 2) * (cellSide + gap) : 0
+    let shape = RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
     return Button(action: route.go) {
-      routeFace(route)
-        .frame(width: cellSide, height: cellSide)
-        .contentShape(Rectangle())
+      ZStack {
+        // The old label leaves at once; the new ones arrive as the tiles
+        // settle, so two labels never cross.
+        exportFace
+          .opacity(isSplit || index != 0 ? 0 : 1)
+          .animation(.easeOut(duration: 0.12).delay(isSplit ? 0 : 0.3), value: isSplit)
+        routeFace(route)
+          .opacity(isSplit ? 1 : 0)
+          .animation(.easeOut(duration: 0.22).delay(isSplit ? 0.22 : 0), value: isSplit)
+      }
+      .frame(width: size, height: size)
+      .contentShape(Rectangle())
     }
     .buttonStyle(TilePressStyle(shape: shape))
-    .background(surface(shape, shadowed: true))
+    // Stacked, only the top tile casts a shadow, so the pile reads as one.
+    .background(surface(shape, shadowed: isSplit || index == 0))
     .overlay(shape.strokeBorder(tint.opacity(0.35), lineWidth: 0.5))
     .offset(x: offset)
-    .accessibilityLabel(Text(verbatim: route.title))
+    .zIndex(Double(routes.count - index))
+    .disabled(!isSplit)
+    .accessibilityHidden(!isSplit)
+    .accessibilityLabel(isSplit ? Text(verbatim: route.title) : Text(title))
+  }
+
+  private var exportFace: some View {
+    VStack(spacing: 14) {
+      Image(systemName: symbol)
+        .font(.system(size: side * 0.17, weight: .light))
+        .foregroundColor(tint)
+        .frame(height: side * 0.22)
+      Text(title).font(.headline).foregroundColor(.primary)
+    }
   }
 
   private func routeFace(_ route: ExportRoute) -> some View {

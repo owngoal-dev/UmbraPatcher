@@ -489,7 +489,7 @@ A4000000000000000000000B = {isa = XCBuildConfiguration; name = Release; buildSet
 					"$(PROJECT_DIR)",
 					"$(PROJECT_DIR)/roothide",
 				);
-				MARKETING_VERSION = "3.0-1";
+				MARKETING_VERSION = "3.0-2";
 				PRODUCT_BUNDLE_IDENTIFIER = wiki.qaq.umbra.patcher;
 				PRODUCT_NAME = Patcher;
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -534,7 +534,7 @@ A4000000000000000000000B = {isa = XCBuildConfiguration; name = Release; buildSet
 					"$(PROJECT_DIR)",
 					"$(PROJECT_DIR)/roothide",
 				);
-				MARKETING_VERSION = "3.0-1";
+				MARKETING_VERSION = "3.0-2";
 				PRODUCT_BUNDLE_IDENTIFIER = wiki.qaq.umbra.patcher;
 				PRODUCT_NAME = Patcher;
 				PROVISIONING_PROFILE_SPECIFIER = "";

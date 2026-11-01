@@ -15,10 +15,8 @@ struct ContentView: View {
   @State private var drawerOpen = false
   @State private var drawerHeight: CGFloat = 0
   @State private var showingLog = false
-  /// Export was tapped: the button has split into the places a package can go.
   @Environment(\.verticalSizeClass) private var verticalSizeClass
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-  @State private var choosingExport = false
 
   var body: some View {
     NavigationView {
@@ -110,9 +108,6 @@ struct ContentView: View {
         convert(url)
       }
     }
-    // A new package or a new run puts the single button back.
-    .onChange(of: session.isConverting) { converting in if converting { choosingExport = false } }
-    .onChange(of: session.selectedFile) { _ in choosingExport = false }
   }
 
   // MARK: Actions
@@ -148,11 +143,7 @@ struct ContentView: View {
     switch action {
     case .choose: choosePackage()
     case .convert, .retry: session.convert()
-    case .export:
-      UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-      // A soft spring, so the division overshoots a little and settles.
-      withAnimation(.spring(response: 0.55, dampingFraction: 0.68)) { choosingExport = true }
-    case .converting: break
+    case .export, .converting: break
     }
   }
 
@@ -180,7 +171,7 @@ struct ContentView: View {
   private var main: some View {
     VStack(spacing: 22) {
       PackageTile(
-        action: action, routes: routes, isSplit: choosingExport, side: tileSide,
+        action: action, routes: routes, side: tileSide,
         perform: perform)
       caption
         .font(.footnote)
@@ -225,7 +216,7 @@ struct ContentView: View {
     }
   }
 
-  /// The destinations the tile divides into on Export.
+  /// Destinations shown immediately after a successful conversion.
   private var routes: [ExportRoute] {
     guard action == .export, let result = session.result else { return [] }
     let output = session.resolvedOutput(result)

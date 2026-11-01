@@ -14,14 +14,13 @@ struct ExportRoute: Identifiable {
 }
 
 /// The main screen's one control, drawn as the package itself. Choosing and
-/// converting happen on the one tile; on Export it divides, like a cell, into
+/// converting happen on the one tile; on success it divides into
 /// a tile for each place the package can go.
 struct PackageTile: View {
   let action: MainAction
   /// Where an exported package can go; empty until there is one.
   let routes: [ExportRoute]
-  /// Export was tapped: the tile has divided into `routes`.
-  let isSplit: Bool
+  private var isSplit: Bool { action == .export && !routes.isEmpty }
   let perform: () -> Void
   @ScaledMetric private var side: CGFloat
   @State private var travel: CGFloat = 0
@@ -29,12 +28,11 @@ struct PackageTile: View {
   private let gap: CGFloat = 16
 
   init(
-    action: MainAction, routes: [ExportRoute], isSplit: Bool, side: CGFloat,
+    action: MainAction, routes: [ExportRoute], side: CGFloat,
     perform: @escaping () -> Void
   ) {
     self.action = action
     self.routes = routes
-    self.isSplit = isSplit
     self.perform = perform
     _side = ScaledMetric(wrappedValue: side, relativeTo: .headline)
   }
@@ -89,45 +87,21 @@ struct PackageTile: View {
 
   // MARK: Divided tiles
 
-  /// Each daughter tile starts as the whole tile, stacked under the first,
-  /// then shrinks and moves to its place in the row.
+  /// Successful conversions expose each destination as a separate button.
   private func cell(_ index: Int, _ route: ExportRoute) -> some View {
     let count = CGFloat(routes.count)
-    let size = isSplit ? cellSide : side
-    let offset = isSplit ? (CGFloat(index) - (count - 1) / 2) * (cellSide + gap) : 0
-    let shape = RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
-    return Button(action: isSplit ? route.go : perform) {
-      ZStack {
-        // The old label leaves at once; the new ones arrive as the tiles
-        // settle, so two labels never cross.
-        exportFace
-          .opacity(isSplit || index != 0 ? 0 : 1)
-          .animation(.easeOut(duration: 0.12).delay(isSplit ? 0 : 0.3), value: isSplit)
-        routeFace(route)
-          .opacity(isSplit ? 1 : 0)
-          .animation(.easeOut(duration: 0.22).delay(isSplit ? 0.22 : 0), value: isSplit)
-      }
-      .frame(width: size, height: size)
-      .contentShape(Rectangle())
+    let offset = (CGFloat(index) - (count - 1) / 2) * (cellSide + gap)
+    let shape = RoundedRectangle(cornerRadius: cellSide * 0.22, style: .continuous)
+    return Button(action: route.go) {
+      routeFace(route)
+        .frame(width: cellSide, height: cellSide)
+        .contentShape(Rectangle())
     }
     .buttonStyle(TilePressStyle(shape: shape))
-    // Stacked, only the top tile casts a shadow, so the pile reads as one.
-    .background(surface(shape, shadowed: isSplit || index == 0))
+    .background(surface(shape, shadowed: true))
     .overlay(shape.strokeBorder(tint.opacity(0.35), lineWidth: 0.5))
     .offset(x: offset)
-    .zIndex(Double(routes.count - index))
-    .accessibilityHidden(!isSplit && index != 0)
-    .accessibilityLabel(isSplit ? Text(verbatim: route.title) : Text(title))
-  }
-
-  private var exportFace: some View {
-    VStack(spacing: 14) {
-      Image(systemName: symbol)
-        .font(.system(size: side * 0.17, weight: .light))
-        .foregroundColor(tint)
-        .frame(height: side * 0.22)
-      Text(title).font(.headline).foregroundColor(.primary)
-    }
+    .accessibilityLabel(Text(verbatim: route.title))
   }
 
   private func routeFace(_ route: ExportRoute) -> some View {
@@ -191,7 +165,8 @@ struct PackageTile: View {
 
   private var tint: Color {
     switch action {
-    case .export: return PatcherStyle.success
+    // Export destinations are actions; the caption carries the success colour.
+    case .export: return PatcherStyle.accent
     case .retry: return PatcherStyle.failure
     default: return PatcherStyle.accent
     }

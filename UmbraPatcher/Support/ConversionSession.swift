@@ -74,8 +74,8 @@ final class ConversionSession: ObservableObject {
       return []
     #else
       let managers = [
-        PackageManager(identifier: "wiki.qaq.irisin", title: String(localized: "Open in Irisin")),
         PackageManager(identifier: "org.coolstar.SileoStore", title: String(localized: "Open in Sileo")),
+        PackageManager(identifier: "wiki.qaq.irisin", title: String(localized: "Open in Irisin")),
         PackageManager(identifier: "xyz.willy.Zebra", title: String(localized: "Open in Zebra")),
       ]
       guard let preferred = managers.first(where: { IsAppAvailable($0.identifier) }) else {
